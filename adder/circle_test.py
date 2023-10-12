@@ -29,24 +29,25 @@ def fulladder(circuit, in1, in2, in3, carry):
     circuit.cx(in1, in2)
 
 
-def testcircle(numofqubit, totalxtime, coorrate):
+def testcircle(numofqubit, totalxtime, coorrate, makeerror):
     if numofqubit < 3:
         print("numofqubit must >= 3 !!!!!!!!")
 
-    circ = QuantumCircuit(numofqubit + 2, 1)
+    circ = QuantumCircuit(numofqubit + 1, 1)
     #                                  sum qubit and support qubit
 
     for k in range(totalxtime):
-        circ.x(range(numofqubit))
+        if makeerror:
+            circ.x(range(numofqubit))
         circ.barrier()
         if k % coorrate == coorrate - 1:
             for i in range(numofqubit):
                 fulladder(
                     circ, (i - 1) % numofqubit, i, (i + 1) % numofqubit, numofqubit
                 )
-                circ.cx([i, numofqubit], numofqubit + 1)
-                circ.cx(numofqubit + 1, i)
-                circ.reset([numofqubit, numofqubit + 1])
+                circ.reset(i)
+                circ.cx(numofqubit, i)
+                circ.reset(numofqubit)
 
     circ.measure([0], [0])
     result = execute(
@@ -60,15 +61,16 @@ def testcircle(numofqubit, totalxtime, coorrate):
     return counts["0"] / shots
 
 
-def testcircle_rand(numofqubit, totalxtime, coorrate):
+def testcircle_rand(numofqubit, totalxtime, coorrate, makeerror):
     if numofqubit < 3:
         print("numofqubit must >= 3 !!!!!!!!")
 
-    circ = QuantumCircuit(numofqubit + 2, 1)
+    circ = QuantumCircuit(numofqubit + 1, 1)
     #                                  sum qubit and support qubit
     count = 0
     for k in range(totalxtime):
-        circ.x(range(numofqubit))
+        if makeerror:
+            circ.x(range(numofqubit))
         circ.barrier()
         if k % coorrate == coorrate - 1:
             for i in range(numofqubit):
@@ -79,11 +81,13 @@ def testcircle_rand(numofqubit, totalxtime, coorrate):
                     (i + 1 + (count + 1) % 2) % numofqubit,
                     numofqubit,
                 )
-                circ.cx([i, numofqubit], numofqubit + 1)
-                circ.cx(numofqubit + 1, i)
-                circ.reset([numofqubit, numofqubit + 1])
+                circ.reset(i)
+                circ.cx(numofqubit, i)
+                circ.reset(numofqubit)
             if numofqubit > 3:
-                for i in range(count % 2, numofqubit, 2):
+                for i in range(0, numofqubit, 2):
+                    circ.swap(i, (i + 1) % numofqubit)
+                for i in range(1, numofqubit, 2):
                     circ.swap(i, (i + 1) % numofqubit)
             count += 1
 
@@ -100,40 +104,42 @@ def testcircle_rand(numofqubit, totalxtime, coorrate):
 
 
 # %%
-corrrate = 200
-totalqubit = 5
-x = range(0, 2000, corrrate)
+corrrate = 200  # 200
+measurerate = 200  # 200
+makeerror = True
+totaltime = 2000  # 2000
+x = range(0, totaltime, measurerate)
+
 y1 = []
 for i in x:
-    y1.append(testcircle(3, i, corrrate))
+    y1.append(testcircle(3, i, corrrate, makeerror))
 plt.plot(x, y1, color="r", label="corr")
 for i in y1:
     print(i)
 
 y1 = []
 for i in x:
-    y1.append(testcircle(6, i, corrrate))
+    y1.append(testcircle(6, i, corrrate, makeerror))
 plt.plot(x, y1, color="g", label="corr")
 for i in y1:
     print(i)
 
+
 y1 = []
 for i in x:
-    y1.append(testcircle_rand(10, i, corrrate))
+    y1.append(testcircle_rand(6, i, corrrate, makeerror))
     print(y1[-1])
 plt.plot(x, y1, color="c", label="corr")
 
 y2 = []
 for i in x:
-    y2.append(testcircle(3, i, 1000000))
+    y2.append(testcircle(3, i, 1000000, makeerror))
 for i in y2:
     print(i)
 
 
 plt.plot(x, y2, color="k", label="no corr")
-plt.title(
-    f"totalqubit = {totalqubit}\ncorrect per {corrrate} x gates,{prob_1},{prob_2}"
-)  # title
+plt.title(f"correct per {corrrate} x gates,{prob_1},{prob_2}")  # title
 plt.ylabel("correct rate")  # y label
 plt.xlabel("x gates")  # x label
 
