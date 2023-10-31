@@ -75,7 +75,7 @@ result = execute(
     shots=shots,
 ).result()
 counts = result.get_counts(0)
-print(f"correct rate: {(counts['0000']+counts['1111'])/shots:.4f}")
-print(f"uncorrect rate: {1-(counts['0000']+counts['1111'])/shots:.4f}")
+print(f"correct rate: {(counts['0000'])/shots:.4f}")
+print(f"uncorrect rate: {1-(counts['0000'])/shots:.4f}")
 plot_histogram(counts)
 # %%

@@ -127,7 +127,7 @@ for i in y1:
 
 y1 = []
 for i in x:
-    y1.append(testcircle_rand(6, i, corrrate, makeerror))
+    y1.append(testcircle_rand(10, i, corrrate, makeerror))
     print(y1[-1])
 plt.plot(x, y1, color="c", label="corr")
 
