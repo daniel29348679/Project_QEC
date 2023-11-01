@@ -173,7 +173,7 @@ for i in y1:
     print(i)
 
 
-print("6 bit rand")
+print("10 bit rand")
 y1 = []
 for i in x:
     y1.append(testcircle_rand(10, i, corrrate, makeerror))
