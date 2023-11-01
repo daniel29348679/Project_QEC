@@ -106,10 +106,11 @@ def testcircle_rand(numofqubit, totalxtime, coorrate, makeerror):
 # %%
 corrrate = 200  # 200
 measurerate = 200  # 200
-makeerror = True
+makeerror = False
 totaltime = 2000  # 2000
 x = range(0, totaltime, measurerate)
 
+print("3 bit")
 y1 = []
 for i in x:
     y1.append(testcircle(3, i, corrrate, makeerror))
@@ -117,6 +118,7 @@ plt.plot(x, y1, color="r", label="corr")
 for i in y1:
     print(i)
 
+print("6 bit")
 y1 = []
 for i in x:
     y1.append(testcircle(6, i, corrrate, makeerror))
@@ -124,13 +126,14 @@ plt.plot(x, y1, color="g", label="corr")
 for i in y1:
     print(i)
 
-
+print("6 bit rand")
 y1 = []
 for i in x:
-    y1.append(testcircle_rand(10, i, corrrate, makeerror))
+    y1.append(testcircle_rand(6, i, corrrate, makeerror))
     print(y1[-1])
 plt.plot(x, y1, color="c", label="corr")
 
+print("base")
 y2 = []
 for i in x:
     y2.append(testcircle(3, i, 1000000, makeerror))

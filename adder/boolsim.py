@@ -22,6 +22,9 @@ class boolcirc:
         self.checkerror(j, 0.25)
         self.checkerror_both(i, j, 0.25)
 
+    def reset(self, a):
+        self.qubit[a] = False
+
     def x(self, a):
         self.qubit[a] = not self.qubit[a]
 
@@ -33,17 +36,27 @@ class boolcirc:
     def ccx(self, c1, c2, t):
         beginstate = self.qubit[c1] ^ self.qubit[c2]
 
-        circ.checkerror_ecr(c1, t)
-        circ.checkerror_ecr(c2, t)
-        circ.checkerror_ecr(c1, t)
-        circ.checkerror_ecr(c2, t)
+        self.checkerror_ecr(c1, t)
+        self.checkerror_ecr(c2, t)
+        self.checkerror_ecr(c1, t)
+        self.checkerror_ecr(c2, t)
 
         if self.qubit[c1] and self.qubit[c2]:
             self.qubit[t] = not self.qubit[t]
 
         self.qubit[t] ^= beginstate ^ self.qubit[c1] ^ self.qubit[c2]
 
-        pass
+    def swap(self, a, b):
+        self.cx(a, b)
+        self.cx(b, a)
+        self.cx(a, b)
+
+    def count(self, f, e, value):
+        count = 0
+        for i in range(f, e):
+            if self.qubit[i] == value:
+                count += 1
+        return count
 
     def __str__(self):
         s = ""
