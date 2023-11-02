@@ -1,12 +1,13 @@
 # %%
 import numpy as np
-from qiskit.visualization import plot_histogram
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 
 class boolcirc:
     def __init__(self, qubit, errorrate):
-        self.qubit = np.array([False] * qubit, dtype=np.bool_)
+        # self.qubit = np.array([False] * qubit, dtype=np.bool_)
+        self.qubit = [False] * qubit
         self.prob = errorrate
 
     def checkerror(self, i, rate):
@@ -52,6 +53,9 @@ class boolcirc:
         self.cx(b, a)
         self.cx(a, b)
 
+    def swap_direct(self, a, b):
+        self.qubit[a], self.qubit[b] = self.qubit[b], self.qubit[a]
+
     def count(self, f, e, value):
         count = 0
         for i in range(f, e):
@@ -69,24 +73,7 @@ class boolcirc:
         return s
 
 
-"""
-errorrate = 0.01
-shots = 10000
-counts = {}
-for _ in range(shots):
-    circ = boolcirc(3, errorrate)
-    circ.x(0)
-    circ.x(1)
-    circ.ccx(0, 1, 2)
-    if str(circ) not in counts:
-        counts[str(circ)] = 0
-    counts[str(circ)] += 1
-
-plot_histogram(counts)
-"""
-
-
-prob_2 = 0.007395  # 2-qubit gate 0.007395
+prob_2 = 0.003  # 2-qubit gate 0.007395
 shots = 10000
 
 
@@ -99,11 +86,11 @@ def fulladder(circuit, in1, in2, in3, carry):
     circuit.cx(in1, in2)
 
 
-def testcircle(numofqubit, totalxtime, coorrate, makeerror):
-    counts = shots % numofqubit
-    for _ in range(shots // numofqubit):
+def testcircle(numofqubit, totaltime, coorrate, makeerror, measurerate):
+    counts = [shots % numofqubit] * (totaltime // measurerate + 1)
+    for _ in tqdm(range(shots // numofqubit)):
         circ = boolcirc(numofqubit + 1, prob_2)
-        for k in range(totalxtime):
+        for k in range(totaltime + 1):
             if makeerror > 0:
                 for i in range(numofqubit):
                     circ.checkerror(i, makeerror)
@@ -115,16 +102,17 @@ def testcircle(numofqubit, totalxtime, coorrate, makeerror):
                     circ.reset(i)
                     circ.cx(numofqubit, i)
                     circ.reset(numofqubit)
-        counts += circ.count(0, numofqubit, False)
-    return counts / shots
+            if k % measurerate == 0:
+                counts[k // measurerate] += circ.count(0, numofqubit, False)
+    return [i / shots for i in counts]
 
 
-def testcircle_rand(numofqubit, totalxtime, coorrate, makeerror):
-    counts = shots % numofqubit
-    for _ in range(shots // numofqubit):
+def testcircle_rand(numofqubit, totaltime, coorrate, makeerror, measurerate):
+    counts = [shots % numofqubit] * (totaltime // measurerate + 1)
+    for _ in tqdm(range(shots // numofqubit)):
         circ = boolcirc(numofqubit + 1, prob_2)
         count = 0
-        for k in range(totalxtime):
+        for k in range(totaltime + 1):
             if makeerror > 0:
                 for i in range(numofqubit):
                     circ.checkerror(i, makeerror)
@@ -144,9 +132,9 @@ def testcircle_rand(numofqubit, totalxtime, coorrate, makeerror):
                     circ.swap(i, (i + 1) % numofqubit)
                 for i in range(1, numofqubit, 2):
                     circ.swap(i, (i + 1) % numofqubit)
-                count += 1
-        counts += circ.count(0, numofqubit, False)
-    return counts / shots
+            if k % measurerate == 0:
+                counts[k // measurerate] += circ.count(0, numofqubit, False)
+    return [i / shots for i in counts]
 
 
 # %%
@@ -154,41 +142,30 @@ corrrate = 1  # 200
 measurerate = 10  # 200
 makeerror = 3
 totaltime = 100  # 2000
-x = range(0, totaltime, measurerate)
+x = range(0, totaltime + 1, measurerate)
 
-print("3 bit")
-y1 = []
-for i in x:
-    y1.append(testcircle(3, i, corrrate, makeerror))
-plt.plot(x, y1, color="r", label="corr")
-for i in y1:
-    print(i)
+allsim = {}
 
-print("6 bit")
-y1 = []
-for i in x:
-    y1.append(testcircle(10, i, corrrate, makeerror))
-plt.plot(x, y1, color="g", label="corr")
-for i in y1:
-    print(i)
+allsim["3bit"] = testcircle(3, totaltime, corrrate, makeerror, measurerate)
+print(f"3 bit = {allsim['3bit']}")
+plt.plot(x, allsim["3bit"], color="r", label="corr")
 
+allsim["6bit"] = testcircle(6, totaltime, corrrate, makeerror, measurerate)
+print(f"6 bit = {allsim['6bit']}")
+plt.plot(x, allsim["6bit"], color="r", label="corr")
 
-print("10 bit rand")
-y1 = []
-for i in x:
-    y1.append(testcircle_rand(10, i, corrrate, makeerror))
-    print(y1[-1])
-plt.plot(x, y1, color="c", label="corr")
+allsim["10bit_rand"] = testcircle_rand(10, totaltime, corrrate, makeerror, measurerate)
+print(f"10 bit_rand = {allsim['10bit_rand']}")
+plt.plot(x, allsim["10bit_rand"], color="c", label="corr")
 
-print("base")
-y2 = []
-for i in x:
-    y2.append(testcircle(3, i, 1000000, makeerror))
-for i in y2:
-    print(i)
+allsim["20bit_rand"] = testcircle_rand(20, totaltime, corrrate, makeerror, measurerate)
+print(f"20 bit_rand = {allsim['20bit_rand']}")
+plt.plot(x, allsim["20bit_rand"], color="c", label="corr")
 
+allsim["base"] = testcircle(6, totaltime, corrrate, makeerror, measurerate)
+print(f"base = {allsim['base']}")
+plt.plot(x, allsim["base"], color="r", label="no corr")
 
-plt.plot(x, y2, color="k", label="no corr")
 plt.title(f"correct per {corrrate} x gates prob_2={prob_2}")  # title
 plt.ylabel("correct rate")  # y label
 plt.xlabel("x gates")  # x label
