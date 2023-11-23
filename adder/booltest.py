@@ -2,6 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from multiprocessing import Pool
 
 
 class boolcirc:
@@ -85,7 +86,7 @@ def fulladder(circuit, in1, in2, in3, carry):
     circuit.cx(in1, in2)
 
 
-def testcircle(numofqubit, totaltime, coorrate, makeerror, measurerate):
+def testcircle(numofqubit, totaltime, coorrate, makeerror, measurerate, shots, prob_2):
     counts = [shots % numofqubit] * (totaltime // measurerate + 1)
     for _ in tqdm(range(shots // numofqubit)):
         circ = boolcirc(numofqubit + 1, prob_2)
@@ -106,7 +107,9 @@ def testcircle(numofqubit, totaltime, coorrate, makeerror, measurerate):
     return [i / shots for i in counts]
 
 
-def testcircle_rand(numofqubit, totaltime, coorrate, makeerror, measurerate):
+def testcircle_rand(
+    numofqubit, totaltime, coorrate, makeerror, measurerate, shots, prob_2
+):
     counts = [shots % numofqubit] * (totaltime // measurerate + 1)
     for _ in tqdm(range(shots // numofqubit)):
         circ = boolcirc(numofqubit + 1, prob_2)
@@ -136,7 +139,9 @@ def testcircle_rand(numofqubit, totaltime, coorrate, makeerror, measurerate):
     return [i / shots for i in counts]
 
 
-def testcircle_rand_double(numofqubit, totaltime, coorrate, makeerror, measurerate):
+def testcircle_r_d(
+    numofqubit, totaltime, coorrate, makeerror, measurerate, shots, prob_2
+):
     counts = [shots % numofqubit] * (totaltime // measurerate + 1)
     for _ in tqdm(range(shots // numofqubit)):
         circ = boolcirc(numofqubit * 2, prob_2)
@@ -166,11 +171,12 @@ def testcircle_rand_double(numofqubit, totaltime, coorrate, makeerror, measurera
     return [i / shots for i in counts]
 
 
-def testcircle_d_p(numofqubit, totaltime, coorrate, makeerror, measurerate):
+def testcircle_d_p(
+    numofqubit, totaltime, coorrate, makeerror, measurerate, shots, prob_2
+):
     counts = [shots % numofqubit] * (totaltime // measurerate + 1)
     for _ in tqdm(range(shots // numofqubit)):
         circ = boolcirc(numofqubit * 2, prob_2)
-        count = 0
         for k in range(totaltime + 1):
             if makeerror > 0:
                 for i in range(numofqubit):
@@ -193,75 +199,190 @@ def testcircle_d_p(numofqubit, totaltime, coorrate, makeerror, measurerate):
     return [i / shots for i in counts]
 
 
+def testcircle_R21(totaltime, makeerror, measurerate, shots, prob_2):
+    """
+     0  1  2  3  4  5  6  7  8
+    19          20           9
+    18 17 16 15 14 13 12 11 10
+    """
+    counts = [shots % 21] * (totaltime // measurerate + 1)
+    for _ in tqdm(range(shots // 21)):
+        circ = boolcirc(21 * 2, prob_2)
+        for k in range(totaltime + 1):
+            if makeerror > 0:
+                for i in range(21):
+                    circ.checkerror(i, makeerror)
+            for i in range(10):
+                circ.reset(i * 2 + 21)
+                fulladder(
+                    circ,
+                    15,
+                    16,
+                    17,
+                    i * 2 + 21,
+                )
+                circ.reset(i * 2 + 1 + 21)
+                fulladder(
+                    circ,
+                    11,
+                    12,
+                    13,
+                    i * 2 + 1 + 21,
+                )
+                for j in range(0, 20, 2):
+                    circ.swap(j, j + 1)
+                circ.swap(20, 14)
+                for j in range(1, 20, 2):
+                    circ.swap(j, (j + 1) % 20)
+                circ.swap(20, 14)
+            circ.reset(41)
+            fulladder(
+                circ,
+                15,
+                16,
+                17,
+                41,
+            )
+
+            for i in range(21):
+                circ.swap_direct(i + 21, i)
+            circ.permutation(0, 21)
+            if k % measurerate == 0:
+                counts[k // measurerate] += circ.count(0, 21, False)
+    return [i / shots for i in counts]
+
+
+def testcircle_R30(totaltime, makeerror, measurerate, shots, prob_2):
+    """
+     0  1  2  3  4  5  6  7  8  9 10 11 12
+    27          28          29          13
+    26 25 24 23 22 21 20 19 18 17 16 15 14
+    """
+    counts = [shots % 30] * (totaltime // measurerate + 1)
+    for _ in tqdm(range(shots // 30)):
+        circ = boolcirc(30 * 2, prob_2)
+        for k in range(totaltime + 1):
+            if makeerror > 0:
+                for i in range(30):
+                    circ.checkerror(i, makeerror)
+            for i in range(10):
+                circ.reset(i * 3 + 30)
+                fulladder(
+                    circ,
+                    15,
+                    16,
+                    17,
+                    i * 3 + 30,
+                )
+                circ.reset(i * 3 + 1 + 30)
+                fulladder(
+                    circ,
+                    19,
+                    20,
+                    21,
+                    i * 3 + 1 + 30,
+                )
+                circ.reset(i * 3 + 2 + 30)
+                fulladder(
+                    circ,
+                    23,
+                    24,
+                    25,
+                    i * 3 + 2 + 30,
+                )
+                for j in range(0, 28, 2):
+                    circ.swap(j, j + 1)
+                circ.swap(28, 22)
+                circ.swap(29, 8)
+                for j in range(1, 28, 2):
+                    circ.swap(j, (j + 1) % 28)
+                circ.swap(28, 22)
+                circ.swap(29, 8)
+            for i in range(30):
+                circ.swap_direct(i + 30, i)
+            # circ.permutation(0, 30)
+            if k % measurerate == 0:
+                counts[k // measurerate] += circ.count(0, 30, False)
+    return [i / shots for i in counts]
+
+
 # %%
-fig = plt.figure()
-fig.set_size_inches(16, 9)
+if __name__ == "__main__":
+    prob_2 = 0.002  # 2-qubit gate 0.007395 0.002795 0.001433
+    shots = 10000
+    corrrate = 1  # 200
+    measurerate = 5  # 200
+    makeerror = 5
+    totaltime = 1000  # 2000
+    x = range(0, totaltime + 1, measurerate)
+    allsim = {}
 
-prob_2 = 0.002795  # 2-qubit gate 0.007395
-shots = 10000
-corrrate = 1  # 200
-measurerate = 5  # 200
-makeerror = 20
-totaltime = 100  # 2000
-x = range(0, totaltime + 1, measurerate)
+    with Pool(19) as p:
+        allsim["10bit_rand"] = p.apply_async(
+            testcircle_rand,
+            (10, totaltime, corrrate, makeerror, measurerate, shots, prob_2),
+        )
+        allsim["20bit_rand"] = p.apply_async(
+            testcircle_rand,
+            (20, totaltime, corrrate, makeerror, measurerate, shots, prob_2),
+        )
 
-allsim = {}
+        allsim["10bit_rand_d"] = p.apply_async(
+            testcircle_r_d,
+            (10, totaltime, corrrate, makeerror, measurerate, shots, prob_2),
+        )
+        allsim["20bit_rand_d"] = p.apply_async(
+            testcircle_r_d,
+            (20, totaltime, corrrate, makeerror, measurerate, shots, prob_2),
+        )
+        allsim["10bit_d_p"] = p.apply_async(
+            testcircle_d_p,
+            (10, totaltime, corrrate, makeerror, measurerate, shots, prob_2),
+        )
+        allsim["20bit_d_p"] = p.apply_async(
+            testcircle_d_p,
+            (20, totaltime, corrrate, makeerror, measurerate, shots, prob_2),
+        )
+        allsim["40bit_d_p"] = p.apply_async(
+            testcircle_d_p,
+            (40, totaltime, corrrate, makeerror, measurerate, shots, prob_2),
+        )
+        allsim["21bit_R"] = p.apply_async(
+            testcircle_R21, (totaltime, makeerror, measurerate, shots, prob_2)
+        )
 
-allsim["10bit_rand"] = testcircle_rand(10, totaltime, corrrate, makeerror, measurerate)
-print(f"10 bit_rand = {allsim['10bit_rand']}")
-plt.plot(x, allsim["10bit_rand"], color="c", label="10 r")
+        allsim["30bit_R"] = p.apply_async(
+            testcircle_R30, (totaltime, makeerror, measurerate, shots, prob_2)
+        )
 
-allsim["20bit_rand"] = testcircle_rand(30, totaltime, corrrate, makeerror, measurerate)
-print(f"20 bit_rand = {allsim['20bit_rand']}")
-plt.plot(x, allsim["20bit_rand"], color="c", label="20 r")
+        allsim["base"] = p.apply_async(
+            testcircle, (6, totaltime, corrrate, makeerror, measurerate, shots, prob_2)
+        )
 
-allsim["10bit_rand_d"] = testcircle_rand_double(
-    10, totaltime, corrrate, makeerror, measurerate
-)
-print(f"10 bit_rand_d = {allsim['10bit_rand_d']}")
-plt.plot(x, allsim["10bit_rand_d"], color="m", label="10 rd")
+        p.close()
+        p.join()
+        for i in allsim:
+            allsim[i] = allsim[i].get()
 
-allsim["20bit_rand_d"] = testcircle_rand_double(
-    20, totaltime, corrrate, makeerror, measurerate
-)
-print(f"20 bit_rand_d = {allsim['20bit_rand_d']}")
-plt.plot(x, allsim["20bit_rand_d"], color="m", label="20 rd")
+    fig = plt.figure()
+    fig.set_size_inches(16, 9)
+    plt.plot(x, allsim["10bit_rand"], color="c", label="10 r")
+    plt.plot(x, allsim["20bit_rand"], color="c", label="20 r")
+    plt.plot(x, allsim["10bit_rand_d"], color="m", label="10 rd")
+    plt.plot(x, allsim["20bit_rand_d"], color="m", label="20 rd")
+    plt.plot(x, allsim["10bit_d_p"], color="gray", label="10 dp")
+    plt.plot(x, allsim["20bit_d_p"], color="gray", label="20 dp")
+    plt.plot(x, allsim["40bit_d_p"], color="gray", label="40 dp")
+    plt.plot(x, allsim["21bit_R"], color="gold", label="21 R")
+    plt.plot(x, allsim["30bit_R"], color="gold", label="30 R")
+    print(allsim["21bit_R"])
+    print(allsim["30bit_R"])
 
-allsim["10bit_d_p"] = testcircle_d_p(10, totaltime, corrrate, makeerror, measurerate)
-print(f"10 bit_d_p = {allsim['10bit_d_p']}")
-plt.plot(x, allsim["10bit_d_p"], color="gray", label="10 dp")
+    plt.plot(x, allsim["base"], color="g", label="no corr")
 
-allsim["20bit_d_p"] = testcircle_d_p(20, totaltime, corrrate, makeerror, measurerate)
-print(f"20 bit_d_p = {allsim['20bit_d_p']}")
-plt.plot(x, allsim["20bit_d_p"], color="gray", label="20 dp")
+    plt.title(f"correct per {makeerror} x gates prob_2={prob_2}")  # title
+    plt.ylabel("correct rate")  # y label
+    plt.xlabel(f"{makeerror}x CX gates")  # x label
+    plt.legend()  # show legend
 
-allsim["40bit_d_p"] = testcircle_d_p(40, totaltime, corrrate, makeerror, measurerate)
-print(f"40 bit_d_p = {allsim['40bit_d_p']}")
-plt.plot(x, allsim["40bit_d_p"], color="gray", label="40 dp")
-
-allsim["base"] = testcircle(6, totaltime, corrrate, makeerror, measurerate)
-print(f"base = {allsim['base']}")
-plt.plot(x, allsim["base"], color="g", label="no corr")
-plt.title(f"correct per {makeerror} x gates prob_2={prob_2}")  # title
-plt.ylabel("correct rate")  # y label
-plt.xlabel(f"{makeerror}x CX gates")  # x label
-plt.legend()  # show legend
-# %%
-fig = plt.figure()
-fig.set_size_inches(16, 9)
-plt.plot(x, allsim["10bit_rand"], color="c", label="10 r")
-plt.plot(x, allsim["20bit_rand"], color="c", label="20 r")
-plt.plot(x, allsim["10bit_rand_d"], color="m", label="10 rd")
-plt.plot(x, allsim["20bit_rand_d"], color="m", label="20 rd")
-plt.plot(x, allsim["10bit_d_p"], color="gray", label="10 dp")
-plt.plot(x, allsim["20bit_d_p"], color="gray", label="20 dp")
-plt.plot(x, allsim["40bit_d_p"], color="gray", label="40 dp")
-plt.plot(x, allsim["base"], color="g", label="no corr")
-
-
-plt.title(f"correct per {makeerror} x gates prob_2={prob_2}")  # title
-plt.ylabel("correct rate")  # y label
-plt.xlabel(f"{makeerror}x CX gates")  # x label
-plt.legend()  # show legend
-
-# %%
+    # %%
