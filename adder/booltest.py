@@ -1,8 +1,33 @@
 # %%
 import numpy as np
+from statistics import median
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from multiprocessing import Pool
+
+
+class testresult:
+    def __init__(self, testname, measurex, result, yerr):
+        self.testname = testname  # "6bit"
+        self.measurex = measurex  # [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+        self.result = result  # [0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1,0.0]
+        self.yerr = yerr  # [0.01,0.01,0.01,0.01,0.01,0.01,0.01,0.01,0.01,0.01]
+
+    def addplt(self):
+        # random color
+        col = (np.random.random(), np.random.random(), np.random.random())
+
+        plt.errorbar(
+            self.measurex,
+            self.result,
+            yerr=[i * 1 for i in self.yerr],
+            color=col,
+            label=self.testname,
+            fmt="k",
+        )
+
+    def __str__(self):
+        return f"testname:{self.testname}\nresult:{self.result}\nyerr:{self.yerr}"
 
 
 class boolcirc:
@@ -87,10 +112,13 @@ def fulladder(circuit, in1, in2, in3, carry):
 
 
 def testcircle(numofqubit, totaltime, coorrate, makeerror, measurerate, shots, prob_2):
-    counts = [shots % numofqubit] * (totaltime // measurerate + 1)
+    counts = np.empty([(totaltime // measurerate + 1), shots // numofqubit])
     for _ in tqdm(range(shots // numofqubit)):
         circ = boolcirc(numofqubit + 1, prob_2)
         for k in range(totaltime + 1):
+            if k == 100:
+                for i in range(numofqubit):
+                    circ.checkerror(i, 20)
             if makeerror > 0:
                 for i in range(numofqubit):
                     circ.checkerror(i, makeerror)
@@ -103,18 +131,28 @@ def testcircle(numofqubit, totaltime, coorrate, makeerror, measurerate, shots, p
                     circ.cx(numofqubit, i)
                     circ.reset(numofqubit)
             if k % measurerate == 0:
-                counts[k // measurerate] += circ.count(0, numofqubit, False)
-    return [i / shots for i in counts]
+                counts[k // measurerate][_] = (
+                    circ.count(0, numofqubit, False) / numofqubit
+                )
+    return testresult(
+        f"{numofqubit}bit" if coorrate < 10000 else "do nothing",
+        [i for i in range(0, totaltime + 1, measurerate)],
+        [np.average(i) for i in counts],
+        [np.std(i) for i in counts],
+    )
 
 
 def testcircle_rand(
     numofqubit, totaltime, coorrate, makeerror, measurerate, shots, prob_2
 ):
-    counts = [shots % numofqubit] * (totaltime // measurerate + 1)
+    counts = np.empty([(totaltime // measurerate + 1), shots // numofqubit])
     for _ in tqdm(range(shots // numofqubit)):
         circ = boolcirc(numofqubit + 1, prob_2)
         count = 0
         for k in range(totaltime + 1):
+            if k == 100:
+                for i in range(numofqubit):
+                    circ.checkerror(i, 20)
             if makeerror > 0:
                 for i in range(numofqubit):
                     circ.checkerror(i, makeerror)
@@ -135,18 +173,28 @@ def testcircle_rand(
                 for i in range(1, numofqubit, 2):
                     circ.swap(i, (i + 1) % numofqubit)
             if k % measurerate == 0:
-                counts[k // measurerate] += circ.count(0, numofqubit, False)
-    return [i / shots for i in counts]
+                counts[k // measurerate][_] = (
+                    circ.count(0, numofqubit, False) / numofqubit
+                )
+    return testresult(
+        f"{numofqubit}bit_rand",
+        [i for i in range(0, totaltime + 1, measurerate)],
+        [np.average(i) for i in counts],
+        [np.std(i) for i in counts],
+    )
 
 
 def testcircle_r_d(
     numofqubit, totaltime, coorrate, makeerror, measurerate, shots, prob_2
 ):
-    counts = [shots % numofqubit] * (totaltime // measurerate + 1)
+    counts = np.empty([(totaltime // measurerate + 1), shots // numofqubit])
     for _ in tqdm(range(shots // numofqubit)):
         circ = boolcirc(numofqubit * 2, prob_2)
         count = 0
         for k in range(totaltime + 1):
+            if k == 100:
+                for i in range(numofqubit):
+                    circ.checkerror(i, 20)
             if makeerror > 0:
                 for i in range(numofqubit):
                     circ.checkerror(i, makeerror)
@@ -167,17 +215,27 @@ def testcircle_r_d(
             for i in range(numofqubit):
                 circ.swap_direct(i + numofqubit, i)
             if k % measurerate == 0:
-                counts[k // measurerate] += circ.count(0, numofqubit, False)
-    return [i / shots for i in counts]
+                counts[k // measurerate][_] = (
+                    circ.count(0, numofqubit, False) / numofqubit
+                )
+    return testresult(
+        f"{numofqubit}bit_r_d",
+        [i for i in range(0, totaltime + 1, measurerate)],
+        [np.average(i) for i in counts],
+        [np.std(i) for i in counts],
+    )
 
 
 def testcircle_d_p(
     numofqubit, totaltime, coorrate, makeerror, measurerate, shots, prob_2
 ):
-    counts = [shots % numofqubit] * (totaltime // measurerate + 1)
+    counts = np.empty([(totaltime // measurerate + 1), shots // numofqubit])
     for _ in tqdm(range(shots // numofqubit)):
         circ = boolcirc(numofqubit * 2, prob_2)
         for k in range(totaltime + 1):
+            if k == 100:
+                for i in range(numofqubit):
+                    circ.checkerror(i, 20)
             if makeerror > 0:
                 for i in range(numofqubit):
                     circ.checkerror(i, makeerror)
@@ -195,8 +253,15 @@ def testcircle_d_p(
                 circ.swap_direct(i + numofqubit, i)
             circ.permutation(0, numofqubit)
             if k % measurerate == 0:
-                counts[k // measurerate] += circ.count(0, numofqubit, False)
-    return [i / shots for i in counts]
+                counts[k // measurerate][_] = (
+                    circ.count(0, numofqubit, False) / numofqubit
+                )
+    return testresult(
+        f"{numofqubit}bit_d_p",
+        [i for i in range(0, totaltime + 1, measurerate)],
+        [np.average(i) for i in counts],
+        [np.std(i) for i in counts],
+    )
 
 
 def testcircle_R21(totaltime, makeerror, measurerate, shots, prob_2):
@@ -205,10 +270,13 @@ def testcircle_R21(totaltime, makeerror, measurerate, shots, prob_2):
     19          20           9
     18 17 16 15 14 13 12 11 10
     """
-    counts = [shots % 21] * (totaltime // measurerate + 1)
+    counts = np.empty([(totaltime // measurerate + 1), shots // 21])
     for _ in tqdm(range(shots // 21)):
         circ = boolcirc(21 * 2, prob_2)
         for k in range(totaltime + 1):
+            if k == 100:
+                for i in range(21):
+                    circ.checkerror(i, 20)
             if makeerror > 0:
                 for i in range(21):
                     circ.checkerror(i, makeerror)
@@ -246,10 +314,15 @@ def testcircle_R21(totaltime, makeerror, measurerate, shots, prob_2):
 
             for i in range(21):
                 circ.swap_direct(i + 21, i)
-            circ.permutation(0, 21)
+            # circ.permutation(0, 21)
             if k % measurerate == 0:
-                counts[k // measurerate] += circ.count(0, 21, False)
-    return [i / shots for i in counts]
+                counts[k // measurerate][_] = circ.count(0, 21, False) / 21
+    return testresult(
+        f"{21}bit_R",
+        [i for i in range(0, totaltime + 1, measurerate)],
+        [np.average(i) for i in counts],
+        [np.std(i) for i in counts],
+    )
 
 
 def testcircle_R30(totaltime, makeerror, measurerate, shots, prob_2):
@@ -258,10 +331,13 @@ def testcircle_R30(totaltime, makeerror, measurerate, shots, prob_2):
     27          28          29          13
     26 25 24 23 22 21 20 19 18 17 16 15 14
     """
-    counts = [shots % 30] * (totaltime // measurerate + 1)
+    counts = np.empty([(totaltime // measurerate + 1), shots // 30])
     for _ in tqdm(range(shots // 30)):
         circ = boolcirc(30 * 2, prob_2)
         for k in range(totaltime + 1):
+            if k == 100:
+                for i in range(30):
+                    circ.checkerror(i, 20)
             if makeerror > 0:
                 for i in range(30):
                     circ.checkerror(i, makeerror)
@@ -302,22 +378,31 @@ def testcircle_R30(totaltime, makeerror, measurerate, shots, prob_2):
                 circ.swap_direct(i + 30, i)
             # circ.permutation(0, 30)
             if k % measurerate == 0:
-                counts[k // measurerate] += circ.count(0, 30, False)
-    return [i / shots for i in counts]
+                counts[k // measurerate][_] = circ.count(0, 30, False) / 30
+    return testresult(
+        f"{30}bit_R",
+        [i for i in range(0, totaltime + 1, measurerate)],
+        [np.average(i) for i in counts],
+        [np.std(i) for i in counts],
+    )
 
 
 # %%
 if __name__ == "__main__":
-    prob_2 = 0.002  # 2-qubit gate 0.007395 0.002795 0.001433
-    shots = 10000
+    prob_2 = 0.001433  # 2-qubit gate 0.007395 0.002795 0.001433
+    shots = 2000
     corrrate = 1  # 200
     measurerate = 5  # 200
     makeerror = 5
-    totaltime = 1000  # 2000
+    totaltime = 500  # 2000
     x = range(0, totaltime + 1, measurerate)
     allsim = {}
 
     with Pool(19) as p:
+        """
+        allsim["6bit"] = p.apply_async(
+            testcircle, (6, totaltime, corrrate, makeerror, measurerate, shots, prob_2)
+        )
         allsim["10bit_rand"] = p.apply_async(
             testcircle_rand,
             (10, totaltime, corrrate, makeerror, measurerate, shots, prob_2),
@@ -347,25 +432,30 @@ if __name__ == "__main__":
             testcircle_d_p,
             (40, totaltime, corrrate, makeerror, measurerate, shots, prob_2),
         )
+
         allsim["21bit_R"] = p.apply_async(
             testcircle_R21, (totaltime, makeerror, measurerate, shots, prob_2)
         )
-
+        """
         allsim["30bit_R"] = p.apply_async(
             testcircle_R30, (totaltime, makeerror, measurerate, shots, prob_2)
         )
-
+        """
         allsim["base"] = p.apply_async(
-            testcircle, (6, totaltime, corrrate, makeerror, measurerate, shots, prob_2)
+            testcircle, (6, totaltime, 9999999, makeerror, measurerate, shots, prob_2)
         )
+        """
 
         p.close()
         p.join()
-        for i in allsim:
-            allsim[i] = allsim[i].get()
 
     fig = plt.figure()
     fig.set_size_inches(16, 9)
+    for i in allsim:
+        allsim[i] = allsim[i].get()
+        allsim[i].addplt()
+    """
+    plt.plot(x, allsim["6bit"], color="r", label="6")
     plt.plot(x, allsim["10bit_rand"], color="c", label="10 r")
     plt.plot(x, allsim["20bit_rand"], color="c", label="20 r")
     plt.plot(x, allsim["10bit_rand_d"], color="m", label="10 rd")
@@ -375,14 +465,16 @@ if __name__ == "__main__":
     plt.plot(x, allsim["40bit_d_p"], color="gray", label="40 dp")
     plt.plot(x, allsim["21bit_R"], color="gold", label="21 R")
     plt.plot(x, allsim["30bit_R"], color="gold", label="30 R")
-    print(allsim["21bit_R"])
-    print(allsim["30bit_R"])
 
     plt.plot(x, allsim["base"], color="g", label="no corr")
+    """
 
     plt.title(f"correct per {makeerror} x gates prob_2={prob_2}")  # title
     plt.ylabel("correct rate")  # y label
     plt.xlabel(f"{makeerror}x CX gates")  # x label
     plt.legend()  # show legend
+    plt.show()
+
+    print(allsim["30bit_R"])
 
     # %%
