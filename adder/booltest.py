@@ -16,7 +16,7 @@ class testresult:
     def addplt(self):
         # random color
         col = (np.random.random(), np.random.random(), np.random.random())
-
+        """
         plt.errorbar(
             self.measurex,
             self.result,
@@ -24,6 +24,14 @@ class testresult:
             color=col,
             label=self.testname,
             fmt="k",
+        )
+        """
+
+        plt.plot(
+            self.measurex,
+            self.result,
+            color=col,
+            label=self.testname,
         )
 
     def __str__(self):
@@ -314,6 +322,7 @@ def testcircle_R21(totaltime, makeerror, measurerate, shots, prob_2):
 
             for i in range(21):
                 circ.swap_direct(i + 21, i)
+                circ.checkerror(i + 21, prob_2 * 3)
             # circ.permutation(0, 21)
             if k % measurerate == 0:
                 counts[k // measurerate][_] = circ.count(0, 21, False) / 21
@@ -376,6 +385,7 @@ def testcircle_R30(totaltime, makeerror, measurerate, shots, prob_2):
                 circ.swap(29, 8)
             for i in range(30):
                 circ.swap_direct(i + 30, i)
+                circ.checkerror(i + 30, prob_2 * 3)
             # circ.permutation(0, 30)
             if k % measurerate == 0:
                 counts[k // measurerate][_] = circ.count(0, 30, False) / 30
@@ -389,8 +399,8 @@ def testcircle_R30(totaltime, makeerror, measurerate, shots, prob_2):
 
 # %%
 if __name__ == "__main__":
-    prob_2 = 0.001433  # 2-qubit gate 0.007395 0.002795 0.001433
-    shots = 2000
+    prob_2 = 0.007395  # 2-qubit gate 0.007395 0.002795 0.001433
+    shots = 20000
     corrrate = 1  # 200
     measurerate = 5  # 200
     makeerror = 5
@@ -399,27 +409,32 @@ if __name__ == "__main__":
     allsim = {}
 
     with Pool(19) as p:
-        """
+
         allsim["6bit"] = p.apply_async(
             testcircle, (6, totaltime, corrrate, makeerror, measurerate, shots, prob_2)
         )
+        """
         allsim["10bit_rand"] = p.apply_async(
             testcircle_rand,
             (10, totaltime, corrrate, makeerror, measurerate, shots, prob_2),
         )
+        """
         allsim["20bit_rand"] = p.apply_async(
             testcircle_rand,
             (20, totaltime, corrrate, makeerror, measurerate, shots, prob_2),
         )
 
+        """
         allsim["10bit_rand_d"] = p.apply_async(
             testcircle_r_d,
             (10, totaltime, corrrate, makeerror, measurerate, shots, prob_2),
         )
+        """
         allsim["20bit_rand_d"] = p.apply_async(
             testcircle_r_d,
             (20, totaltime, corrrate, makeerror, measurerate, shots, prob_2),
         )
+        """
         allsim["10bit_d_p"] = p.apply_async(
             testcircle_d_p,
             (10, totaltime, corrrate, makeerror, measurerate, shots, prob_2),
@@ -428,6 +443,7 @@ if __name__ == "__main__":
             testcircle_d_p,
             (20, totaltime, corrrate, makeerror, measurerate, shots, prob_2),
         )
+        """
         allsim["40bit_d_p"] = p.apply_async(
             testcircle_d_p,
             (40, totaltime, corrrate, makeerror, measurerate, shots, prob_2),
@@ -436,15 +452,14 @@ if __name__ == "__main__":
         allsim["21bit_R"] = p.apply_async(
             testcircle_R21, (totaltime, makeerror, measurerate, shots, prob_2)
         )
-        """
+
         allsim["30bit_R"] = p.apply_async(
             testcircle_R30, (totaltime, makeerror, measurerate, shots, prob_2)
         )
-        """
+
         allsim["base"] = p.apply_async(
             testcircle, (6, totaltime, 9999999, makeerror, measurerate, shots, prob_2)
         )
-        """
 
         p.close()
         p.join()

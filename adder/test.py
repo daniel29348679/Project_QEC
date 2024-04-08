@@ -41,7 +41,8 @@ circ.barrier()
 corr(circ)
 # circ.reset([0, 1, 2])
 circ.measure([0, 1, 2], [0, 1, 2])
-display(circ.draw("mpl"))
+circ.draw("mpl")
+#%%
 
 circ = transpile(circ, simulator)
 
