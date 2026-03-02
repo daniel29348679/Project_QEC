@@ -21,12 +21,12 @@ shots = 1000000
 
 
 # %% Make a circuit
-def fulladder(circuit, in1, in2, in3, carry):
-    """in1, in2, in3 are the input qubits, carry is the output qubit,!!no sum"""
-    circuit.ccx(in1, in2, carry)
-    circuit.cx(in1, in2)
-    circuit.ccx(in2, in3, carry)
-    circuit.cx(in1, in2)
+def fulladder(circuit, a, b, c, carry):
+    """only carry()!!no sum!!但carry就很像majority的邏輯"""
+    circuit.ccx(a, b, carry)
+    circuit.cx(a, b)
+    circuit.ccx(b, c, carry)
+    circuit.cx(a, b)
 
 
 def testadder(initialstate):

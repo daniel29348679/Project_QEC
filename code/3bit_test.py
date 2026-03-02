@@ -1,9 +1,15 @@
-# %%
-from qiskit import QuantumCircuit, execute, Aer
+"""
+3-bit 實驗:宣告了9個只保護3個data qubit(q0~q2)其餘 q3~q8 都是糾錯用
+對q0,q1,q2做三次fulladder進行多數決,再回寫q0,q1,q2
+"""
+from qiskit import QuantumCircuit, transpile
+from qiskit_aer import Aer
 from qiskit.visualization import plot_histogram
-import qiskit.providers.aer.noise as noise
+import qiskit_aer.noise as noise  # 新的匯入路徑比較穩
+from qiskit.quantum_info import Statevector
 import matplotlib.pyplot as plt
 
+# 設定 physical error rate
 # Error probabilities (from ibm_sherbrooke)
 prob_1 = 0.0002193  # 1-qubit gate 0.0002193
 prob_2 = 0.0002193  # 2-qubit gate 0.007395
@@ -21,12 +27,12 @@ shots = 10000
 
 
 # %% Make a circuit
-def fulladder(circuit, in1, in2, in3, carry):
-    """in1, in2, in3 are the input qubits, carry is the output qubit,!!no sum"""
-    circuit.ccx(in1, in2, carry)
-    circuit.cx(in1, in2)
-    circuit.ccx(in2, in3, carry)
-    circuit.cx(in1, in2)
+def fulladder(circuit, a, b, c, carry):
+    """only carry()!!no sum!!但carry就很像majority的邏輯"""
+    circuit.ccx(a, b, carry)
+    circuit.cx(a, b)
+    circuit.ccx(b, c, carry)
+    circuit.cx(a, b)
 
 
 def corr(circuit):
@@ -59,14 +65,17 @@ def testcirc(totalxtime, coorrate):
             corr(circ)
 
     circ.measure([0, 1, 2], [0, 1, 2])
-    result = execute(
-        circ,
-        Aer.get_backend("qasm_simulator"),
-        basis_gates=basis_gates,
-        noise_model=noise_model,
+    backend = Aer.get_backend("aer_simulator")
+    tcirc = transpile(circ, backend, basis_gates=basis_gates, optimization_level=0)
+
+    result = backend.run(
+        tcirc,
         shots=shots,
+        noise_model=noise_model
     ).result()
-    counts = result.get_counts(0)
+
+    counts = result.get_counts()
+
     sum = counts["000"]
     if "100" in counts:
         sum += counts["100"]
@@ -96,7 +105,7 @@ plt.plot(x, y2, color="g", label="no corr")
 plt.title(f"correct per {corrrate} x gates,{prob_1},{prob_2}")  # title
 plt.ylabel("correct rate")  # y label
 plt.xlabel("x gates")  # x label
-
+plt.legend()
 plt.show()
 
 

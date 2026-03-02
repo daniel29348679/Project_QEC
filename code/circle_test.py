@@ -1,9 +1,16 @@
-# %%
-from qiskit import QuantumCircuit, execute, Aer
+"""
+1.用corr(fulladder + reset + cx 回寫)去跑兩種環狀 qubit 系統
+2.掃不同的時間長度(totalxtime = i),把「最後q0是維持0的比例」當作 correct rate,畫成曲線(correct rate vs x gates)
+3.output圖中的correct rate不是「整體電路正確率」,只看q0最後是不是0
+"""
+from qiskit import QuantumCircuit, transpile
+from qiskit_aer import Aer
 from qiskit.visualization import plot_histogram
-import qiskit.providers.aer.noise as noise
+import qiskit_aer.noise as noise  # 新的匯入路徑比較穩
+from qiskit.quantum_info import Statevector
 import matplotlib.pyplot as plt
 
+# 設定 physical error rate
 # Error probabilities (from ibm_sherbrooke)
 prob_1 = 0.00021932  # 1-qubit gate 0.0002193
 prob_2 = 0.001  # 2-qubit gate 0.007395
@@ -21,14 +28,14 @@ shots = 10000
 
 
 # %% Make a circuit
-def fulladder(circuit, in1, in2, in3, carry):
-    """in1, in2, in3 are the input qubits, carry is the output qubit,!!no sum"""
-    circuit.ccx(in1, in2, carry)
-    circuit.cx(in1, in2)
-    circuit.ccx(in2, in3, carry)
-    circuit.cx(in1, in2)
+def fulladder(circuit, a, b, c, carry):
+    """only carry()!!no sum!!但carry就很像majority的邏輯"""
+    circuit.ccx(a, b, carry)
+    circuit.cx(a, b)
+    circuit.ccx(b, c, carry)
+    circuit.cx(a, b)
 
-
+# 固定鄰居的環狀局部糾錯，固定用0<-(-1,0,1)
 def testcircle(numofqubit, totalxtime, coorrate, makeerror):
     if numofqubit < 3:
         print("numofqubit must >= 3 !!!!!!!!")
@@ -50,17 +57,19 @@ def testcircle(numofqubit, totalxtime, coorrate, makeerror):
                 circ.reset(numofqubit)
 
     circ.measure([0], [0])
-    result = execute(
-        circ,
-        Aer.get_backend("qasm_simulator"),
-        basis_gates=basis_gates,
-        noise_model=noise_model,
+    backend = Aer.get_backend("aer_simulator")
+    tcirc = transpile(circ, backend, basis_gates=basis_gates, optimization_level=0)
+
+    result = backend.run(
+        tcirc,
         shots=shots,
+        noise_model=noise_model
     ).result()
-    counts = result.get_counts(0)
-    return counts["0"] / shots
 
+    counts = result.get_counts()
+    return counts.get("0", 0) / shots
 
+# 鄰居選擇交錯 + swap，「把錯誤/資訊更均勻地攪散」會不會讓局部糾錯更有效?
 def testcircle_rand(numofqubit, totalxtime, coorrate, makeerror):
     if numofqubit < 3:
         print("numofqubit must >= 3 !!!!!!!!")
@@ -92,15 +101,17 @@ def testcircle_rand(numofqubit, totalxtime, coorrate, makeerror):
             count += 1
 
     circ.measure([0], [0])
-    result = execute(
-        circ,
-        Aer.get_backend("qasm_simulator"),
-        basis_gates=basis_gates,
-        noise_model=noise_model,
+    backend = Aer.get_backend("aer_simulator")
+    tcirc = transpile(circ, backend, basis_gates=basis_gates, optimization_level=0)
+
+    result = backend.run(
+        tcirc,
         shots=shots,
+        noise_model=noise_model
     ).result()
-    counts = result.get_counts(0)
-    return counts["0"] / shots
+
+    counts = result.get_counts()
+    return counts.get("0", 0) / shots
 
 
 # %%
@@ -114,7 +125,7 @@ print("3 bit")
 y1 = []
 for i in x:
     y1.append(testcircle(3, i, corrrate, makeerror))
-plt.plot(x, y1, color="r", label="corr")
+plt.plot(x, y1, color="r", label="3bit testcircle")
 for i in y1:
     print(i)
 
@@ -122,7 +133,7 @@ print("6 bit")
 y1 = []
 for i in x:
     y1.append(testcircle(6, i, corrrate, makeerror))
-plt.plot(x, y1, color="g", label="corr")
+plt.plot(x, y1, color="g", label="6bit testcircle")
 for i in y1:
     print(i)
 
@@ -131,7 +142,7 @@ y1 = []
 for i in x:
     y1.append(testcircle_rand(6, i, corrrate, makeerror))
     print(y1[-1])
-plt.plot(x, y1, color="c", label="corr")
+plt.plot(x, y1, color="c", label="6bit testcircle_rand")
 
 print("base")
 y2 = []
@@ -142,11 +153,10 @@ for i in y2:
 
 
 plt.plot(x, y2, color="k", label="no corr")
+
+
 plt.title(f"correct per {corrrate} x gates,{prob_1},{prob_2}")  # title
 plt.ylabel("correct rate")  # y label
 plt.xlabel("x gates")  # x label
-
+plt.legend()
 plt.show()
-
-
-# %%

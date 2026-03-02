@@ -1,9 +1,16 @@
-# %%
-from qiskit import QuantumCircuit, execute, Aer
+"""
+模擬量子電路在不同電路長度下的正確率衰減,發現使用QEC後可減緩衰減情況
+保護9個data qubit(q0~q8),而且分成三個 block,3組3-bit repetition
+三個三個一組,分別寫到9,10,11
+"""
+from qiskit import QuantumCircuit, transpile
+from qiskit_aer import Aer
 from qiskit.visualization import plot_histogram
-import qiskit.providers.aer.noise as noise
+import qiskit_aer.noise as noise  # 新的匯入路徑比較穩
+from qiskit.quantum_info import Statevector
 import matplotlib.pyplot as plt
 
+# 設定 physical error rate
 # Error probabilities (from ibm_sherbrooke)
 prob_1 = 0.0002193  # 1-qubit gate 0.0002193
 prob_2 = 0.0002193  # 0.007395  # 2-qubit gate 0.007395
@@ -21,12 +28,12 @@ shots = 10000
 
 
 # %% Make a circuit
-def fulladder(circuit, in1, in2, in3, carry):
-    """in1, in2, in3 are the input qubits, carry is the output qubit,!!no sum"""
-    circuit.ccx(in1, in2, carry)
-    circuit.cx(in1, in2)
-    circuit.ccx(in2, in3, carry)
-    circuit.cx(in1, in2)
+def fulladder(circuit, a, b, c, carry):
+    """only carry()!!no sum!!但carry就很像majority的邏輯"""
+    circuit.ccx(a, b, carry)
+    circuit.cx(a, b)
+    circuit.ccx(b, c, carry)
+    circuit.cx(a, b)
 
 
 def corr(circuit):
@@ -79,16 +86,17 @@ def doubleqec_9(totalxtime, coorrate):
 
     circ.measure([0], [0])
 
-    result = execute(
-        circ,
-        Aer.get_backend("qasm_simulator"),
-        basis_gates=basis_gates,
-        noise_model=noise_model,
-        shots=shots,
-    ).result()
-    counts = result.get_counts(0)
+    backend = Aer.get_backend("aer_simulator")
+    tcirc = transpile(circ, backend, basis_gates=basis_gates, optimization_level=0)
 
-    return counts["0"] / shots
+    result = backend.run(
+        tcirc,
+        shots=shots,
+        noise_model=noise_model
+    ).result()
+
+    counts = result.get_counts()
+    return counts.get("0", 0) / shots
 
 
 # %%
@@ -108,7 +116,7 @@ plt.plot(x, y2, color="g", label="no corr")
 plt.title(f"doubleqec\ncorrect per {corrrate} x gates,{prob_1},{prob_2}")  # title
 plt.ylabel("correct rate")  # y label
 plt.xlabel("x gates")  # x label
-
+plt.legend()
 plt.show()
 
 # %%

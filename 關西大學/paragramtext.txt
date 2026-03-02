@@ -1,0 +1,16 @@
+20bit,error_rate = 0.007
+
+20bit,error_rate = 0.002
+
+20bit measure[-2, 0, 1],error_rate = 0.007
+
+20bit measure[-2, 0, 1],error_rate = 0.002
+
+20bit random arrangement and copy to another qubit, error_rate = 0.007
+
+20bit random arrangement and copy to another qubit, error_rate = 0.002
+
+21bit use our algo ,error_rate = 0.007
+30bit use our algo ,error_rate = 0.007
+21bit use our algo ,error_rate = 0.002
+30bit use our algo ,error_rate = 0.002
